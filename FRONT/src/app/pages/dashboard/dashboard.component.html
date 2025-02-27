@@ -1,0 +1,49 @@
+<p-toolbar>
+  <div class="p-toolbar-group-left">
+    <h2>Dashboard</h2>
+  </div>
+  <div class="p-toolbar-group-right">
+    <button pButton type="button" label="Abrir Menú" icon="pi pi-bars" (click)="toggleSidebar()"></button>
+    <button pButton type="button" label="Cerrar Sesión" icon="pi pi-sign-out" (click)="cerrarSesion()"></button>
+  </div>
+</p-toolbar>
+
+<p-sidebar [(visible)]="sidebarVisible" position="left" [baseZIndex]="10000">
+  <h3>Menú</h3>
+  <p-menu [model]="menuItems"></p-menu>
+</p-sidebar>
+
+<div class="grid">
+  <div class="col-12 md:col-6 lg:col-3">
+    <p-card>
+      <ng-template pTemplate="header">
+        <i class="pi pi-users"></i> Usuarios Activos
+      </ng-template>
+      <ng-template pTemplate="content">
+        <h3>{{ usuariosActivos }}</h3>
+      </ng-template>
+    </p-card>
+  </div>
+
+  <div class="col-12 md:col-6 lg:col-3">
+    <p-card>
+      <ng-template pTemplate="header">
+        <i class="pi pi-ban"></i> Usuarios Bloqueados
+      </ng-template>
+      <ng-template pTemplate="content">
+        <h3>{{ usuariosBloqueados }}</h3>
+      </ng-template>
+    </p-card>
+  </div>
+
+  <div class="col-12 md:col-6 lg:col-3">
+    <p-card>
+      <ng-template pTemplate="header">
+        <i class="pi pi-exclamation-triangle"></i> Inicios de Sesión Fallidos
+      </ng-template>
+      <ng-template pTemplate="content">
+        <h3>{{ loginFallidos }}</h3>
+      </ng-template>
+    </p-card>
+  </div>
+</div>
