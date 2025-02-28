@@ -2,6 +2,8 @@
 using API.Models;
 using System.ComponentModel.Design;
 using System.Data.SqlClient;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml;
 
@@ -11,25 +13,65 @@ namespace API.Application
     { 
         private readonly IUserRepository _userRepository;
         private readonly IPersonaRepository _personaRepository;
+        private readonly IConfiguration _configuration;
 
-        public UsuarioApp(IUserRepository userRepository, IPersonaRepository personaRepository)
+        public UsuarioApp(
+            IUserRepository userRepository,
+            IPersonaRepository personaRepository,
+            IConfiguration configuration
+            )
         {
             _userRepository = userRepository;
             _personaRepository = personaRepository;
+            _configuration = configuration;
         }
-
-        // Método para actualizar un usuario
-        public async Task ActualizarUsuario(Usuario usuario)
+        public async Task<bool> ActualizarUsuario(ActualizarUsuarioDto usuarioDto, string usuername)
         {
-            if (usuario == null)
+            if (usuarioDto == null)
             {
-                throw new ArgumentNullException(nameof(usuario));
+                throw new ArgumentNullException(nameof(usuarioDto));
             }
 
-            await _userRepository.UpdateAsync(usuario);
-        }
+            var usuarioExistente = await _userRepository.ListAllAsync();
+            var usuario = usuarioExistente.FirstOrDefault(u => u.UserName == usuername);
 
-        // Método para agregar un nuevo usuario
+            if (usuario == null)
+            {
+                throw new ArgumentException("El usuario no existe.");
+            }
+
+            var persona = await _personaRepository.GetByIdAsync(usuario.PersonaIdPersona);
+
+            if (persona == null)
+            {
+                throw new ArgumentException("La persona asociada al usuario no existe.");
+            }
+
+            if (!string.IsNullOrEmpty(usuarioDto.Identificacion) && !Regex.IsMatch(usuarioDto.Identificacion, @"^\d{10}$") ||
+                Regex.IsMatch(usuarioDto.Identificacion, @"(\d)\1{3}"))
+            {
+                throw new ArgumentException("La identificación debe tener 10 dígitos y no contener 4 números seguidos iguales.");
+            }
+
+            if (!string.IsNullOrEmpty(usuarioDto.Nombres))
+                persona.Nombres = usuarioDto.Nombres;
+
+            if (!string.IsNullOrEmpty(usuarioDto.Apellidos))
+                persona.Apellidos = usuarioDto.Apellidos;
+
+            if (usuarioDto.FechaNacimiento.HasValue)
+                persona.FechaNacimiento = usuarioDto.FechaNacimiento.Value;
+
+            if (!string.IsNullOrEmpty(usuarioDto.Identificacion))
+                persona.Identificacion = usuarioDto.Identificacion;
+
+            if(!string.IsNullOrEmpty(usuarioDto.UserName))
+                usuario.UserName = usuarioDto.UserName;
+
+            // Guardar los cambios en la base de datos
+            await _personaRepository.UpdateAsync(persona); 
+            return await _userRepository.UpdateAsync(usuario); 
+        }
         public async Task<Usuario> AgregarUsuario(CrearUsuarioDto personaDto)
         {
             if (personaDto == null)
@@ -69,7 +111,7 @@ namespace API.Application
 
             // ✅ Generar un nombre de usuario válido
             var usuariosExistentes = await _userRepository.ListAllAsync();
-            var baseUserName = GenerarNombreUsuario(personaDto.Nombres, personaDto.Apellidos);
+            var baseUserName = personaDto.UserName;
             var userNameFinal = baseUserName;
             var contador = 1;
 
@@ -90,11 +132,12 @@ namespace API.Application
                 contador++;
             }
 
-            // Crear usuario
+            var hashedPassword = BitConverter.ToString(SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(personaDto.Password))).Replace("-", "").ToLower();
+
             var usuarioNuevo = new Usuario
             {
                 UserName = userNameFinal,
-                Password = personaDto.Password, // ✅ La contraseña viene del frontend y ya fue validada
+                Password = hashedPassword, // ✅ La contraseña viene del frontend y ya fue validada
                 Mail = correoFinal,
                 PersonaIdPersona = persona.IdPersona,
                 Status = "Activo"
@@ -102,19 +145,18 @@ namespace API.Application
 
             return await _userRepository.AddAsync(usuarioNuevo);
         }
-
-        // Método para eliminar un usuario
-        public async Task EliminarUsuario(int id)
+         
+        public async Task<bool> EliminarUsuario(int id)
         {
             if (id <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(id), "El ID del usuario debe ser mayor a cero.");
             }
 
-            await _userRepository.DeleteAsync(id);
+            return await _userRepository.DeleteAsync(id);
+
         }
 
-        // Método para obtener un usuario por su ID
         public async Task<Usuario> ObtenerUsuarioPorId(int id)
         {
             if (id <= 0)
@@ -125,7 +167,6 @@ namespace API.Application
             return await _userRepository.GetByIdAsync(id);
         }
 
-        // Método para obtener todos los usuarios
         public async Task<List<UsuarioDTO>> ObtenerUsuarios()
         {
             var usuarios = await _userRepository.ListAllAsync();
@@ -210,11 +251,11 @@ namespace API.Application
         public async Task<DashboardStatsDTO> DashboardStats()
         {
             // Ejecutar el procedimiento almacenado para cerrar sesión
-            var users = await _userRepository.ListAllAsync();
-            var activos = users.Where(u => u.SessionActive == "Y").Count();
-            var inactivos = users.Where(u => u.SessionActive == "N").Count();
-            var bloqueados = users.Where(u => u.Status == "Bloqueado           ").Count();
-            var totalIntentosFallidos = users.Where(u => u.IntentosFallidos > 0).Sum(u => u.IntentosFallidos);
+            var usuarios = await _userRepository.ListAllAsync();
+            var activos = usuarios.Where(u => u.SessionActive == "Y").Count();
+            var inactivos = usuarios.Where(u => u.SessionActive == "N").Count();
+            var bloqueados = usuarios.Where(u => u.Status == "Bloqueado           ").Count();
+            var totalIntentosFallidos = usuarios.Where(u => u.IntentosFallidos > 0).Sum(u => u.IntentosFallidos);
 
             // Devolver el resultado del procedimiento
             return new DashboardStatsDTO
@@ -224,7 +265,28 @@ namespace API.Application
                 FailedLogins = totalIntentosFallidos,
                 InactiveUsers = inactivos
             };
+
         }
 
+        public async Task<ProfileDTO> profile(string username)
+        {
+            var usuarios = await _userRepository.ListAllAsync();
+            var ususario = usuarios.Where(u => u.UserName == username || u.Mail == username).FirstOrDefault();
+            var ultimaSession = ususario.Sessions.LastOrDefault();
+            var ultimaSessionInicio = ususario.Sessions.LastOrDefault().FechaIngreso.ToString();
+            var ultimaSessionFin = ususario.Sessions.LastOrDefault().FechaCierre.ToString();
+
+            return new ProfileDTO
+            {
+                email = ususario.Mail,
+                usuario = ususario.UserName,
+                intentoFallidos = ususario.IntentosFallidos,
+                ultimaSession = ultimaSessionInicio,
+                ultimaSessionInicio = ultimaSessionInicio,
+                ultimaSessionFin = ultimaSessionFin,
+            };
+
+        }
+        
     }
 }

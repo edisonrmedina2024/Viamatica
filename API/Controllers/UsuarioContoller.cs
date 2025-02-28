@@ -2,6 +2,10 @@
 using API.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace API.Controllers
 {
@@ -27,8 +31,7 @@ namespace API.Controllers
         {
             return await _usuarioService.AgregarUsuario(usuario);
         }
-
-        // Obtener un usuario por ID
+        
         [HttpGet("{id}")]
         public async Task<ActionResult<Usuario>> GetUsuarioPorId(int id)
         {
@@ -50,9 +53,8 @@ namespace API.Controllers
             }
         }
 
-        // Actualizar un usuario existente
         [HttpPut]
-        public async Task<ActionResult> UpdateUsuario([FromBody] Usuario usuario)
+        public async Task<ActionResult<bool>> UpdateUsuario([FromBody] ActualizarUsuarioDto usuario , string usuername)
         {
             if (usuario == null)
             {
@@ -61,8 +63,8 @@ namespace API.Controllers
 
             try
             {
-                await _usuarioService.ActualizarUsuario(usuario);
-                return NoContent(); // Devuelve un status 204 (sin contenido)
+                await _usuarioService.ActualizarUsuario(usuario, usuername);
+                return await _usuarioService.ActualizarUsuario(usuario, usuername);
             }
             catch (Exception ex)
             {
@@ -73,7 +75,7 @@ namespace API.Controllers
 
         // Eliminar un usuario por ID
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeleteUsuario(int id)
+        public async Task<ActionResult<bool>> DeleteUsuario(int id)
         {
             if (id <= 0)
             {
@@ -82,8 +84,7 @@ namespace API.Controllers
 
             try
             {
-                await _usuarioService.EliminarUsuario(id);
-                return NoContent(); // Devuelve un status 204 (sin contenido)
+                return await _usuarioService.EliminarUsuario(id);
             }
             catch (Exception ex)
             {
@@ -108,11 +109,11 @@ namespace API.Controllers
                 if (result.Exito == 0)
                 {
                     // Si el login falla (Exito == 0)
-                    return Unauthorized(new { mensaje = result.Mensaje , exito = result.Exito });
+                    return Unauthorized(new { mensaje = result.Mensaje , exito = result.Exito , token =result.JWT});
                 }
 
                 // Si el login es exitoso (Exito == 1)
-                return Ok(new { mensaje = result.Mensaje, exito = result.Exito });
+                return Ok(new { mensaje = result.Mensaje, exito = result.Exito, token = result.JWT });
             }
             catch (Exception ex)
             {
@@ -156,5 +157,13 @@ namespace API.Controllers
             var stats = await _usuarioService.DashboardStats();
             return Ok(stats);
         }
+
+        [HttpGet("profile")]
+        public async Task<ActionResult<ProfileDTO>> profile(string username)
+        {
+            var profileInfo = await _usuarioService.profile(username);
+            return Ok(profileInfo);
+        }
+
     }
 }

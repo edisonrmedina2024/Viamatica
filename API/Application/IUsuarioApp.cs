@@ -1,4 +1,5 @@
 ﻿using API.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace API.Application
 {
@@ -7,11 +8,13 @@ namespace API.Application
         Task<List<UsuarioDTO>> ObtenerUsuarios();
         Task<Usuario> ObtenerUsuarioPorId(int id);
         Task<Usuario> AgregarUsuario(CrearUsuarioDto usuario);
-        Task ActualizarUsuario(Usuario usuario);
-        Task EliminarUsuario(int id);
+        Task<bool> ActualizarUsuario(ActualizarUsuarioDto usuarioDto,string usuername);
+        Task<bool> EliminarUsuario(int id);
         Task<LoginResult> LoginUsuarioAsync(LoginDto loginDto);
         Task<LoginResult> CerrarSesionAsync(string correo);
         Task<DashboardStatsDTO> DashboardStats();
+        Task<ProfileDTO> profile(string username);
+
 
     }
 }

@@ -26,14 +26,27 @@ namespace API.Data.servicesData.repositories
         public async Task<bool> DeleteAsync(int id)
         {
             var entity = await _context.Set<T>().FindAsync(id);
+
             if (entity == null)
             {
                 return false;
             }
 
-            _context.Set<T>().Remove(entity);
-            await _context.SaveChangesAsync();
-            return true;
+            if (typeof(T) == typeof(Usuario))
+            {
+
+                var usuario = entity as Usuario;
+                usuario.Status = "Eliminado";
+
+                await _context.SaveChangesAsync();
+                return true; 
+            }
+            else
+            {
+                _context.Set<T>().Remove(entity);
+                await _context.SaveChangesAsync();
+                return true;
+            }
         }
 
         public virtual async Task<T> GetByIdAsync(int id)

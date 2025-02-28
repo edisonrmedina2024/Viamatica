@@ -58,10 +58,9 @@ export class DashboardComponent {
 
   
   obtenerEstadisticasUsuarios() {
-    // Llamamos al servicio que obtiene las estadísticas del dashboard
+    
     this.authService.getDashboardStats().subscribe({
       next: (data) => {
-        // Asignamos los valores al componente con la respuesta obtenida
         this.usuariosActivos = data.activeUsers;
         this.usuariosInactivos = data.inactiveUsers;
         this.usuariosBloqueados = data.blockedUsers;

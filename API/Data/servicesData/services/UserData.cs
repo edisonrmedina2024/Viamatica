@@ -4,20 +4,31 @@ using API.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using Microsoft.Data.SqlClient;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Security.Cryptography;
 
 namespace API.Data.servicesData.services
 {
     public class UserData : BaseRepository<Usuario>, IUserRepository
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public UserData(ApplicationDbContext context) : base(context)
+
+        public UserData(ApplicationDbContext context, IConfiguration configuration) : base(context)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<LoginResult> LoginUsuarioAsync(string credencial, string password)
         {
+
+            password = BitConverter.ToString(SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(password))).Replace("-", "").ToLower();
+
             using (var connection = _context.Database.GetDbConnection())
             {
                 await connection.OpenAsync();
@@ -37,11 +48,41 @@ namespace API.Data.servicesData.services
                     {
                         if (await reader.ReadAsync())
                         {
-                            return new LoginResult
+                            if (Convert.ToInt32(reader["Exito"]) == 1)
                             {
-                                Mensaje = reader["Mensaje"].ToString(),
-                                Exito = Convert.ToInt32(reader["Exito"])
-                            };
+                                var tokenHandler = new JwtSecurityTokenHandler();
+                                var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+                                var tokenDescriptor = new SecurityTokenDescriptor
+                                {
+                                    Subject = new ClaimsIdentity(new Claim[]
+                                    {
+                                new Claim(ClaimTypes.Name, credencial)
+                                                }),
+                                                Expires = DateTime.UtcNow.AddMinutes(30),
+                                                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                                            };
+                                            var token = tokenHandler.CreateToken(tokenDescriptor);
+                                            string userToken = tokenHandler.WriteToken(token);
+
+                                return new LoginResult
+                                {
+                                    Mensaje = reader["Mensaje"].ToString(),
+                                    Exito = Convert.ToInt32(reader["Exito"]),
+                                    JWT = userToken
+                                };
+                            }
+                            else
+                            {
+                                return new LoginResult
+                                {
+                                    Mensaje = reader["Mensaje"].ToString(),
+                                    Exito = Convert.ToInt32(reader["Exito"]),
+                                    JWT = ""
+                                };
+
+                            }
+
+                            
                         }
                     }
                 }
