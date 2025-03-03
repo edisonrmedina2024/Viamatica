@@ -15,7 +15,9 @@ import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
-import { ActualizarUsuarioDto } from '../../interfaces/interfaces';
+import { forkJoin } from 'rxjs';
+import * as XLSX from 'xlsx';
+import { ActualizarUsuarioDto, CrearUsuarioDto } from '../../interfaces/interfaces';
 import { AuthService } from '../../services/auth.service';
 @Component({
   selector: 'app-user-table',
@@ -54,7 +56,7 @@ export class UserTableComponent {
   };
   submitted: boolean = false;
   userDialog: boolean = false;
-  isAdmin: boolean = false;
+  isAdmin: boolean = true;
   loading: boolean = true;
   
   globalFilter: string = '';
@@ -205,25 +207,55 @@ export class UserTableComponent {
   }
   
   // Cargar usuarios desde archivo Excel
-  importUsers(event: { files: any[]; }) {
+  importUsers(event: { files: any[] }) {
     if (!this.isAdmin) {
-      this.messageService.add({severity:'warn', summary: 'Acceso denegado', detail: 'No tienes permisos para importar usuarios'});
+      this.messageService.add({ severity: 'warn', summary: 'Acceso denegado', detail: 'No tienes permisos para importar usuarios' });
       return;
     }
-    
     const file = event.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // this.authService.importUsers(formData).subscribe(
-    //   (result) => {
-    //     this.loadUsers(); // Recargar la lista de usuarios
-    //     this.messageService.add({severity:'success', summary: 'Éxito', detail: `${result.importedCount} usuarios importados correctamente`, life: 3000});
-    //   },
-    //   (error) => {
-    //     this.messageService.add({severity:'error', summary: 'Error', detail: 'No se pudieron importar los usuarios'});
-    //   }
-    // );
+  
+    if (!file) {
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se seleccionó ningún archivo' });
+      return;
+    }
+  
+    const reader = new FileReader();
+    reader.onload = (e: any) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+  
+      // Tomamos la primera hoja
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+  
+      const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { raw: true });
+  
+      const usuarios: CrearUsuarioDto[] = jsonData.map(row => ({
+        userName: row['Usuario'] ? String(row['Usuario']) : '',
+        identificacion: row['Identificación'] ? String(row['Identificación']) : '',
+        nombres: row['Nombres'] ? String(row['Nombres']) : '',
+        apellidos: row['Apellidos'] ? String(row['Apellidos']) : '',
+        fechaNacimientoe: row['Fecha Nacimiento'] 
+        ? new Date(row['Fecha Nacimiento']).toISOString() 
+        : '',
+        password: row['Contraseña'] || 'defaultPassword', 
+      }));
+  
+      const requests = usuarios.map(user => this.authService.createUser(user));
+
+        forkJoin(requests).subscribe(
+          (results) => {
+            this.loadUsers();
+            this.messageService.add({ severity: 'success', summary: 'Éxito', detail: `Se importaron ${results.length} usuarios correctamente`, life: 3000 });
+          },
+          (error) => {
+            this.messageService.add({ severity: 'error', summary: 'Error', detail: 'No se pudieron importar algunos usuarios' });
+          }
+        );
+
+    };
+  
+    reader.readAsArrayBuffer(file);
   }
   
   // Métodos auxiliares

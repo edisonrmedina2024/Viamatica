@@ -13,7 +13,7 @@
           <input pInputText type="text" [(ngModel)]="globalFilter" placeholder="Buscar..." />
         </span>
         <button pButton pRipple label="Nuevo" icon="pi pi-plus" class="p-button-success mr-2" (click)="openNew()" *ngIf="isAdmin"></button>
-        <p-fileUpload mode="basic" chooseLabel="Importar Excel" name="file" [auto]="true" accept=".xlsx,.csv" (uploadHandler)="importUsers($event)" *ngIf="isAdmin"></p-fileUpload>
+        <p-fileUpload mode="advanced" chooseLabel="Importar Excel" name="file" [auto]="true" accept=".xlsx,.csv" (onSelect)="importUsers($event)" ></p-fileUpload>
         <button pButton pRipple label="Exportar" icon="pi pi-download" class="p-button-help ml-2" (click)="exportExcel()" *ngIf="isAdmin"></button>
       </div>
     </div>

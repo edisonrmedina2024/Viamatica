@@ -31,7 +31,7 @@ export class AuthService {
 
   createUser(user: CrearUsuarioDto ) {
     return this.http.post<CrearUsuarioDto>(
-      `${this.apiUrl}/UsuarioContoller`,
+      `${this.apiUrl}/`,
       user
     );
   }
