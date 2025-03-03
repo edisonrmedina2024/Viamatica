@@ -1,7 +1,10 @@
 using API.Application;
 using API.Data;
 using API.Data.servicesData.services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,11 +35,37 @@ builder.Services.AddScoped<IUsuarioApp,UsuarioApp>();
 builder.Services.AddScoped<IPersonaRepository,PersonData>();
 builder.Services.AddScoped<IRolRepository,RolData>();
 builder.Services.AddScoped<IRoleApp, RoleApp>();
+builder.Services.AddScoped<IRolOpcionesRepository, RolOpcionesData>();
 
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
+
+#region Autorizacion
+
+var jwtConfig = builder.Configuration.GetSection("Jwt");
+string semilla = jwtConfig["Key"];
+byte[] semillaByte = Encoding.UTF8.GetBytes(semilla);
+SymmetricSecurityKey key = new SymmetricSecurityKey(semillaByte);
+
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opt =>
+    {
+        opt.RequireHttpsMetadata = false;
+        opt.TokenValidationParameters = new TokenValidationParameters()
+        {
+            IssuerSigningKey = key,
+            ValidateLifetime = true,
+            ValidIssuer = jwtConfig["Issuer"],
+            ValidAudience = jwtConfig["Audience"],
+            ValidateIssuer = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+#endregion
 
 builder.Services.AddSwaggerGen(c =>
 {
@@ -59,10 +88,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Enable CORS with the policy
-app.UseCors("AngularPolicy");
+app.UseAuthentication(); 
+app.UseAuthorization();  
 
-app.UseAuthorization();
+app.UseCors("AngularPolicy");
 
 app.MapControllers();
 

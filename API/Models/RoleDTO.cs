@@ -1,4 +1,6 @@
-﻿namespace API.Models
+﻿using API.Data.servicesData.services;
+
+namespace API.Models
 {
     public class RoleDTO
     {
@@ -7,7 +9,7 @@
 
         public string RolName { get; set; } = null!;
 
-        public virtual ICollection<RolOpcione> RolOpcionesIdOpcions { get; set; } = new List<RolOpcione>();
+        public virtual List<ReadRolOptionDto> RolOpcionesIdOpcions { get; set; } = new List<ReadRolOptionDto>();
 
 
     }

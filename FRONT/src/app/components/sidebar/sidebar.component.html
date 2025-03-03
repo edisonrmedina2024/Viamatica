@@ -1,0 +1,6 @@
+<p-sidebar position="left" [visible]="visibleMenu" [modal]="true" [showCloseIcon]="false">
+    <h3>Menú</h3>
+    <p-menu [model]="menuItems"></p-menu>
+    <br>
+    <p-button label="Close" (onClick)="visibleMenu = false"></p-button>
+</p-sidebar>

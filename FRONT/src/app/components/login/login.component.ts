@@ -41,19 +41,19 @@ export class LoginComponent {
 
   onSubmit() {
     if (this.loginForm.invalid) return;
-
+    debugger;
     const credentials: LoginDTO = this.loginForm.value;
     this.authService.login(credentials).subscribe({
       next: (response) => {
         if (response.exito === 1) {
           // Guardar las credenciales del usuario
           localStorage.setItem('user', JSON.stringify(credentials.credencial));
-
-          // Llamar al método para obtener el rol del usuario
+          localStorage.setItem('token', JSON.stringify(response.token));
+          
+          debugger;
           this.getRoleAndMenuOptions(credentials.credencial);
 
-          // Redirigir al dashboard
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/home']);
         } else {
           this.errorMessage = response.mensaje;
         }
@@ -64,6 +64,7 @@ export class LoginComponent {
     });
   }
   getRoleAndMenuOptions(credencial: string) {
+    debugger;
     this.rolService.getRoleByUsername(credencial).subscribe({
       next: (role: RoleDTO) => {
         // Guardar el rol completo en localStorage

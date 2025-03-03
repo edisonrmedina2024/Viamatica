@@ -14,7 +14,6 @@ namespace API.Application
         Task<LoginResult> CerrarSesionAsync(string correo);
         Task<DashboardStatsDTO> DashboardStats();
         Task<ProfileDTO> profile(string username);
-
-
+        Task<bool> recoveryPassword(RecoveryPasswordDTO recoveryPasswordDTO);
     }
 }

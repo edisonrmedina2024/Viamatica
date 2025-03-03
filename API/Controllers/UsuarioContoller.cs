@@ -1,5 +1,7 @@
 ﻿using API.Application;
 using API.Models;
+using Azure.Core;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -9,6 +11,7 @@ using System.Text;
 
 namespace API.Controllers
 {
+    
     [Route("api/[controller]")]
     [ApiController]
     public class UsuarioContoller : ControllerBase
@@ -21,6 +24,7 @@ namespace API.Controllers
         }
 
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<UsuarioDTO>>> GetUsuarios()
         {
             return await _usuarioService.ObtenerUsuarios();
@@ -54,6 +58,7 @@ namespace API.Controllers
         }
 
         [HttpPut]
+        [Authorize]
         public async Task<ActionResult<bool>> UpdateUsuario([FromBody] ActualizarUsuarioDto usuario , string usuername)
         {
             if (usuario == null)
@@ -73,8 +78,8 @@ namespace API.Controllers
             }
         }
 
-        // Eliminar un usuario por ID
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<ActionResult<bool>> DeleteUsuario(int id)
         {
             if (id <= 0)
@@ -109,7 +114,7 @@ namespace API.Controllers
                 if (result.Exito == 0)
                 {
                     // Si el login falla (Exito == 0)
-                    return Unauthorized(new { mensaje = result.Mensaje , exito = result.Exito , token =result.JWT});
+                    return BadRequest(new { mensaje = result.Mensaje , exito = result.Exito , token =result.JWT});
                 }
 
                 // Si el login es exitoso (Exito == 1)
@@ -121,6 +126,7 @@ namespace API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, new { mensaje = "Error al intentar iniciar sesión", error = ex.Message });
             }
         }
+        
         [HttpPost("logout")]
         public async Task<ActionResult> Logout([FromBody] LoginDto loginDto)
         {
@@ -137,7 +143,7 @@ namespace API.Controllers
                 if (result.Exito == 0)
                 {
                     // Si el cierre de sesión falla (Exito == 0)
-                    return Unauthorized(new { mensaje = result.Mensaje, exito = result.Exito });
+                    return BadRequest(new { mensaje = result.Mensaje, exito = result.Exito });
                 }
 
                 // Si el cierre de sesión es exitoso (Exito == 1)
@@ -151,6 +157,7 @@ namespace API.Controllers
         }
 
         [HttpGet("statics")]
+        [Authorize]
         public async Task<ActionResult<DashboardStatsDTO>> GetDashboardStats()
         {
             // Aquí puedes agregar la validación de roles para solo permitir el acceso a administradores
@@ -159,11 +166,33 @@ namespace API.Controllers
         }
 
         [HttpGet("profile")]
+        [Authorize]
         public async Task<ActionResult<ProfileDTO>> profile(string username)
         {
             var profileInfo = await _usuarioService.profile(username);
             return Ok(profileInfo);
         }
+
+        [HttpPost("recovery-password")]
+        [Authorize]
+        public async Task<ActionResult<bool>> recoveryPassword(RecoveryPasswordDTO recoveryPasswordDTO)
+        {
+            
+            if (string.IsNullOrEmpty(recoveryPasswordDTO.Username) || string.IsNullOrEmpty(recoveryPasswordDTO.NewPassword))
+            {
+                return BadRequest("Faltan parámetros.");
+            }
+
+            var result = await _usuarioService.recoveryPassword(recoveryPasswordDTO);
+
+            if (!result)
+            {
+                return NotFound("No se pudo cambiar la contraseña");
+            }
+
+            return Ok(true);
+        }
+
 
     }
 }

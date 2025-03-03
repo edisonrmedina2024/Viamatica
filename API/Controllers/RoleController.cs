@@ -18,7 +18,7 @@ namespace API.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<RoleDTO>>> GetUsuarios()
+        public async Task<ActionResult<IEnumerable<RoleDTO>>> GetRoles()
         {
             return await _roleApp.ObtenerRoles();
         }
@@ -35,6 +35,18 @@ namespace API.Controllers
 
             return Ok(role);
         }
+
+        [HttpPost]
+        public async Task<ActionResult<RoleDTO>> CreateRol(CreateRoleDto createRoleDto){
+            return await _roleApp.CreateRol(createRoleDto);
+        }
+
+        [HttpPut]
+        public async Task<ActionResult<RoleDTO>> UpdateRol(int id, CreateRoleDto createRoleDto)
+        {
+            return await _roleApp.UpdateRol(id, createRoleDto);
+        }
+
         [HttpGet("menu/{username}")]
         public async Task<ActionResult<RoleDTO>> GetMenuByUserName(string username)
         {
@@ -46,6 +58,26 @@ namespace API.Controllers
             }
 
             return Ok(role);
+        }
+
+        [HttpGet("menus")]
+        public async Task<ActionResult<RoleDTO>> getMenus()
+        {
+            var menus = await _roleApp.getMenus();
+
+            if (menus == null)
+            {
+                return NotFound("No existen menus");
+            }
+
+            return Ok(menus);
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<bool>> deleteRol(int id)
+        {
+            return await _roleApp.deleteRol(id);
+
         }
     }
 

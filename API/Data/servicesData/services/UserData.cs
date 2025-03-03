@@ -52,17 +52,22 @@ namespace API.Data.servicesData.services
                             {
                                 var tokenHandler = new JwtSecurityTokenHandler();
                                 var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+                                var expirationMinutes = int.Parse(_configuration["Jwt:ExpirationMinutes"]);
+
                                 var tokenDescriptor = new SecurityTokenDescriptor
                                 {
-                                    Subject = new ClaimsIdentity(new Claim[]
+                                    Subject = new ClaimsIdentity(new[]
                                     {
-                                new Claim(ClaimTypes.Name, credencial)
-                                                }),
-                                                Expires = DateTime.UtcNow.AddMinutes(30),
-                                                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-                                            };
-                                            var token = tokenHandler.CreateToken(tokenDescriptor);
-                                            string userToken = tokenHandler.WriteToken(token);
+                                        new Claim(ClaimTypes.Name, credencial)
+                                    }),
+                                    Expires = DateTime.UtcNow.AddMinutes(expirationMinutes),
+                                    SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                                    Issuer = _configuration["Jwt:Issuer"],
+                                    Audience = _configuration["Jwt:Audience"]
+                                };
+
+                                var token = tokenHandler.CreateToken(tokenDescriptor);
+                                string userToken = tokenHandler.WriteToken(token);
 
                                 return new LoginResult
                                 {

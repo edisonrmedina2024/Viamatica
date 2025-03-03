@@ -1,5 +1,6 @@
 ﻿using API.Data.servicesData.services;
 using API.Models;
+using Azure.Core;
 using System.ComponentModel.Design;
 using System.Data.SqlClient;
 using System.Security.Cryptography;
@@ -109,7 +110,6 @@ namespace API.Application
                 await _personaRepository.AddAsync(persona);
             }
 
-            // ✅ Generar un nombre de usuario válido
             var usuariosExistentes = await _userRepository.ListAllAsync();
             var baseUserName = personaDto.UserName;
             var userNameFinal = baseUserName;
@@ -197,7 +197,6 @@ namespace API.Application
 
         public async Task<LoginResult> LoginUsuarioAsync(LoginDto loginDto)
         {
-            // Ejecutar el procedimiento almacenado y mapear el resultado
             var result = await _userRepository.LoginUsuarioAsync(loginDto.Credencial,loginDto.Password);
 
             return result;
@@ -205,31 +204,25 @@ namespace API.Application
 
         public async Task<LoginResult> CerrarSesionAsync(string correo)
         {
-            // Ejecutar el procedimiento almacenado para cerrar sesión
             var result = await _userRepository.CerrarSesionAsync(correo);
 
-            // Devolver el resultado del procedimiento
             return result;
         }
 
         private string GenerarNombreUsuario(string nombres, string apellidos)
         {
-            // 1. Tomar las primeras dos letras del nombre y el primer apellido
             string baseUserName = nombres.Substring(0, 2).ToUpper() + apellidos.Split(' ')[0];
 
-            // 2. Eliminar caracteres especiales
             baseUserName = Regex.Replace(baseUserName, @"[^a-zA-Z0-9]", "");
 
-            // 3. Asegurar que tenga al menos un número (se agrega '1' al final si no tiene)
             if (!baseUserName.Any(char.IsDigit))
             {
                 baseUserName += "1";
             }
 
-            // 4. Asegurar que la longitud sea entre 8 y 20 caracteres
             if (baseUserName.Length < 8)
             {
-                baseUserName = baseUserName.PadRight(8, 'X'); // Rellenar con "X"
+                baseUserName = baseUserName.PadRight(8, 'X'); 
             }
             else if (baseUserName.Length > 20)
             {
@@ -241,7 +234,7 @@ namespace API.Application
 
         private bool ValidarPassword(string password)
         {
-            // Debe tener al menos 8 caracteres, al menos una mayúscula, un signo y no debe contener espacios
+
             return password.Length >= 8 &&
                    password.Any(char.IsUpper) &&
                    password.Any(ch => "!@#$%^&*()_+-=".Contains(ch)) &&
@@ -272,7 +265,8 @@ namespace API.Application
         {
             var usuarios = await _userRepository.ListAllAsync();
             var ususario = usuarios.Where(u => u.UserName == username || u.Mail == username).FirstOrDefault();
-            var ultimaSession = ususario.Sessions.LastOrDefault();
+            var ultimaSession = ususario.Sessions.OrderByDescending(s => s.FechaCierre).Skip(1).FirstOrDefault();
+
             var ultimaSessionInicio = ususario.Sessions.LastOrDefault().FechaIngreso.ToString();
             var ultimaSessionFin = ususario.Sessions.LastOrDefault().FechaCierre.ToString();
 
@@ -287,6 +281,17 @@ namespace API.Application
             };
 
         }
-        
+
+        public async Task<bool> recoveryPassword(RecoveryPasswordDTO recoveryPasswordDTO)
+        {
+            var usuarios = await _userRepository.ListAllAsync();
+            var ususario = usuarios.Where(u => u.UserName == recoveryPasswordDTO.Username || u.Mail == recoveryPasswordDTO.Username).FirstOrDefault();
+            var hashedPassword = BitConverter.ToString(SHA256.Create().ComputeHash(Encoding.UTF8.GetBytes(recoveryPasswordDTO.NewPassword))).Replace("-", "").ToLower();
+            ususario.Password = hashedPassword;
+
+            return await _userRepository.UpdateAsync(ususario);
+        }
+
+
     }
 }
