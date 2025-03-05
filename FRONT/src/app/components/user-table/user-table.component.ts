@@ -270,8 +270,7 @@ export class UserTableComponent {
     return index;
   }
   
-  getCurrentUserId(): string {
-    
+  getCurrentUserId(): string {    
     return 'current-user-id';
   }
   

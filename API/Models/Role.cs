@@ -11,5 +11,5 @@ public partial class Role
 
     public virtual ICollection<Usuario> IdUsuarios { get; set; } = new List<Usuario>();
 
-    public virtual List<RolOpcione> RolOpcionesIdOpcions { get; set; } = new List<RolOpcione>();
+    public virtual List<RolOpcione> RolOpcionesIdOpcions     { get; set; } = new List<RolOpcione>();
 }

@@ -44,7 +44,7 @@ export class RecoveryComponent {
           this.loading = false;
   
           if (result) {
-            this.router.navigate(['/']);
+            // cambio exitoso
           } else {
             alert('No se pudo restablecer la contraseña. Intenta nuevamente.');
           }

@@ -37,6 +37,10 @@ export class LoginComponent {
       credencial: ['', Validators.required],
       password: ['', Validators.required],
     });
+    
+    if(localStorage.getItem('token') != undefined) {
+      this.router.navigate(['/home/dashboard']);
+    }
   }
 
   onSubmit() {
